@@ -1,5 +1,3 @@
-import { PUBLIC_ONEDRIVE_ROOT_PATH } from '$env/static/public';
-
 export type DriveItem = {
   id: string;
   name: string;
@@ -11,7 +9,7 @@ export type DriveItem = {
   ['@microsoft.graph.downloadUrl']?: string;
 };
 
-const ROOT_PATH = PUBLIC_ONEDRIVE_ROOT_PATH || '';
+const ROOT_PATH = import.meta.env.NEXT_PUBLIC_ONEDRIVE_ROOT_PATH || '';
 const VIDEO = /\.(mp4|mkv|webm|mov|m4v|avi|ts|m2ts)$/i;
 const AUDIO = /\.(mp3|m4a|flac|wav|aac|ogg)$/i;
 const IMAGE = /\.(jpg|jpeg|png|webp|gif)$/i;
@@ -24,9 +22,7 @@ async function graph<T>(token: string, url: string): Promise<T> {
 
 export async function listChildren(token: string, itemId?: string) {
   const base = 'https://graph.microsoft.com/v1.0/me/drive';
-  let url = itemId
-    ? `${base}/items/${encodeURIComponent(itemId)}/children`
-    : `${base}/root/children`;
+  let url = itemId ? `${base}/items/${encodeURIComponent(itemId)}/children` : `${base}/root/children`;
   const all: DriveItem[] = [];
   while (url) {
     const data = await graph<{ value: DriveItem[]; ['@odata.nextLink']?: string }>(token, url);
