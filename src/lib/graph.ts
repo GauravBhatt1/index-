@@ -54,6 +54,25 @@ export async function getDownloadUrl(token: string, id: string) {
   return downloadUrl;
 }
 
+// OneDrive/SharePoint can render formats such as MKV through its own previewer.
+// The returned URL is short-lived and is intended to be embedded by the caller.
+export async function getPreviewUrl(token: string, id: string) {
+  const url = `https://graph.microsoft.com/v1.0/me/drive/items/${encodeURIComponent(id)}/preview`;
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: '{}',
+    cache: 'no-store'
+  });
+  if (!r.ok) throw new Error(`Graph preview ${r.status}: ${await r.text()}`);
+  const x = await r.json();
+  if (!x?.getUrl) throw new Error('OneDrive did not return an embeddable preview URL for this video.');
+  return x.getUrl as string;
+}
+
 export function kind(name: string) {
   if (VIDEO.test(name)) return 'video';
   if (AUDIO.test(name)) return 'audio';
