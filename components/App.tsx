@@ -27,35 +27,48 @@ const categories = ['All', 'Movies', 'TV Shows', 'Anime', 'Music', 'Other'];
 
 function catFor(path: string, name: string) {
   const p = (path + '/' + name).toLowerCase();
+
   if (p.includes('/movies/')) return 'Movies';
-  if (p.includes('/tv shows/') || p.includes('/tv/')) return 'TV Shows';
   if (p.includes('/anime/')) return 'Anime';
   if (/\.(mp3|m4a|flac|wav|aac|ogg)$/i.test(name)) return 'Music';
+
+  // TV episodes are detected from the filename too, so a show does NOT
+  // need to be inside a folder named "TV Shows" or "TV".
+  // Examples: Daldal - S01E01.mkv, Daldal S1E2.mkv
+  if (/\bS\d{1,3}E\d{1,4}\b/i.test(name)) return 'TV Shows';
+  if (p.includes('/tv shows/') || p.includes('/tv/')) return 'TV Shows';
+
   return 'Other';
 }
 
 function showNameFromEpisode(name: string) {
-  // Handles common names such as:
-  // Daldal - S01E01.mkv
-  // Daldal S01E01.mkv
-  // Daldal - 01.mkv
   const withoutExt = name.replace(/\.[^.]+$/, '');
-  const match = withoutExt.match(/^(.*?)(?:\s*[-_. ]\s*)?S\d{1,3}E\d{1,4}\b/i);
+
+  const match = withoutExt.match(
+    /^(.*?)(?:\s*[-_. ]\s*)?S\d{1,3}E\d{1,4}\b/i
+  );
+
   if (match?.[1]?.trim()) return match[1].trim();
 
-  const fallback = withoutExt.replace(/\s*[-_. ]?\d{1,4}\s*$/i, '').trim();
+  const fallback = withoutExt
+    .replace(/\s*[-_. ]?\d{1,4}\s*$/i, '')
+    .trim();
+
   return fallback || withoutExt;
 }
 
 function episodeSort(a: Media, b: Media) {
   const pa = a.name.match(/S(\d{1,3})E(\d{1,4})/i);
   const pb = b.name.match(/S(\d{1,3})E(\d{1,4})/i);
+
   if (pa && pb) {
     const sa = Number(pa[1]);
     const sb = Number(pb[1]);
+
     if (sa !== sb) return sa - sb;
     return Number(pa[2]) - Number(pb[2]);
   }
+
   return a.name.localeCompare(b.name, undefined, { numeric: true });
 }
 
@@ -92,6 +105,7 @@ export default function App() {
   async function token() {
     const a = msal.getAllAccounts()[0];
     if (!a) throw new Error('Please sign in first.');
+
     try {
       return (
         await msal.acquireTokenSilent({
@@ -124,11 +138,7 @@ export default function App() {
       const rootItems = await listChildren(t.accessToken, root.id);
       const out: Media[] = [];
 
-      async function walk(
-        list: DriveItem[],
-        path: string,
-        depth: number
-      ) {
+      async function walk(list: DriveItem[], path: string, depth: number) {
         if (depth > 8) return;
 
         for (const it of list) {
@@ -163,6 +173,7 @@ export default function App() {
 
   async function login() {
     setErr('');
+
     try {
       await msal.initialize();
       const r = await msal.loginPopup({ scopes: graphScopes });
@@ -237,9 +248,11 @@ export default function App() {
     try {
       const t = await token();
       const url = await getDownloadUrl(t, item.id);
+
       if (!url) {
         throw new Error('OneDrive did not return a playback URL.');
       }
+
       setPlaying({ item, url });
     } catch (e: any) {
       setErr(e.message || String(e));
@@ -252,14 +265,13 @@ export default function App() {
         className="card"
         key={item.id}
         onClick={() =>
-          item.kind === 'video' || item.kind === 'audio'
-            ? play(item)
-            : null
+          item.kind === 'video' || item.kind === 'audio' ? play(item) : null
         }
       >
         <div className="poster">
           <span className="badge">{item.kind.toUpperCase()}</span>
         </div>
+
         <div className="cardbody">
           <div className="title" title={item.name}>
             {item.name}
@@ -282,8 +294,10 @@ export default function App() {
         <div className="brand">
           OneDrive <span>Media</span>
         </div>
+
         <div className="actions">
           {account && <span className="sub">{account.username}</span>}
+
           {account ? (
             <button className="btn" onClick={logout}>
               Sign out
@@ -345,9 +359,7 @@ export default function App() {
             </div>
 
             {err && <div className="error">{err}</div>}
-            {busy && (
-              <div className="loading">Scanning OneDrive folders…</div>
-            )}
+            {busy && <div className="loading">Scanning OneDrive folders…</div>}
 
             {!busy && tab === 'TV Shows' ? (
               selectedShow ? (
@@ -370,6 +382,7 @@ export default function App() {
                           : 'episodes'}
                       </div>
                     </div>
+
                     <button
                       className="btn"
                       onClick={() => setSelectedShow(null)}
@@ -393,6 +406,7 @@ export default function App() {
                       <div className="poster">
                         <span className="badge">TV SHOW</span>
                       </div>
+
                       <div className="cardbody">
                         <div className="title" title={show.name}>
                           {show.name}
@@ -409,9 +423,7 @@ export default function App() {
                 </div>
               )
             ) : !busy ? (
-              <div className="grid">
-                {filtered.map(renderMediaCard)}
-              </div>
+              <div className="grid">{filtered.map(renderMediaCard)}</div>
             ) : null}
 
             {!busy &&
@@ -444,12 +456,7 @@ export default function App() {
               src={playing.url}
             />
           ) : (
-            <audio
-              className="video"
-              controls
-              autoPlay
-              src={playing.url}
-            />
+            <audio className="video" controls autoPlay src={playing.url} />
           )}
         </div>
       )}
